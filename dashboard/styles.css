@@ -399,7 +399,7 @@ html, body {
 .game .title {
 
     position: absolute;
-    top: 70%;
+    top: 73%;
     left: calc(100% + 2.5vh);
     white-space: normal;
     max-width: calc(50cqw - var(--large) / 2 - 4vh);
@@ -423,15 +423,28 @@ html, body {
 
 }
 
+/* ============================================================
+   BOTTOM BAR
+   .bottom-bar is just a container. Each game in the carousel can
+   name a panel (game.panel in the JS); the matching .bar-panel is
+   shown and every other one is hidden. To add a new layout:
+   1. add <section class="bar-panel panel-xxx" data-panel="xxx">
+   2. style it with .panel-xxx
+   3. set panel: "xxx" on a game in the carousel
+   ============================================================ */
+
 .bottom-bar {
 
     position: relative;
     z-index: 2;
-    display: grid;
-    
-    grid-template-columns: repeat(3, minmax(30vh, 1fr));
-    grid-template-rows: repeat(3, minmax(12vh, 1fr));
-    gap: clamp(1.2vh, 0.7vw, 0.7vw);
+    min-height: 0;
+
+}
+
+.bar-panel {
+
+    position: absolute;
+    inset: 0;
 
     padding: clamp(8vh, 8.5vw, 8.5vw);
     padding-bottom: clamp(5vw, 5vh, 5vh);
@@ -439,43 +452,67 @@ html, body {
 
     box-sizing: border-box;
     transform-origin: center;
-
-    transition: opacity 0.3s ease, transform 0.3s ease;
     overflow-x: auto;
     overflow-y: hidden;
     scrollbar-width: none;
     touch-action: pan-x;
-       
+
     font-size: clamp(
         0.7vw,
         2vh,
         2vh
     );
 
-}
+    /* hidden by default; kept in layout (visibility, not display) so it can still be measured */
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translateY(3vh);
 
-.bottom-bar::-webkit-scrollbar { display: none; }
-
-.bottom-bar.snap {
-
-    scroll-snap-type: x mandatory;
-    scroll-padding-left: clamp(8vh, 8.5vw, 8.5vw);   /* same as the bar's left padding */
-
-}
-.bottom-bar.snap .card {
-
-    scroll-snap-align: start;
+    transition:
+        opacity 0.3s ease,
+        transform 0.3s ease,
+        visibility 0s linear 0.3s;   /* wait for the fade-out before hiding */
 
 }
 
-.bottom-bar.unfocused {
+.bar-panel::-webkit-scrollbar { display: none; }
+
+.bar-panel.visible {
+
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: none;
+
+    transition:
+        opacity 0.3s ease,
+        transform 0.3s ease,
+        visibility 0s;
+
+}
+
+.bar-panel.visible.unfocused {
 
     opacity: 0.4;
     transform: scale(0.8);
 
 }
 
-.bottom-bar .card {
+.bar-panel.snap {
+
+    scroll-snap-type: x mandatory;
+    scroll-padding-left: clamp(8vh, 8.5vw, 8.5vw);   /* same as the panel's left padding */
+
+}
+
+.bar-panel.snap .card {
+
+    scroll-snap-align: start;
+
+}
+
+.bar-panel .card {
 
     outline: 0.3vh solid transparent;
     outline-offset: 0.5vh;
@@ -488,13 +525,24 @@ html, body {
 
 }
 
-.bottom-bar .card.active {
+.bar-panel .card.active {
 
     transform: scale(1.03);
     outline-color: #fff;
     box-shadow: 0 0 3vh rgba(255, 255, 255, 0.25);
     position: relative;
     z-index: 1;
+
+}
+
+/* ---------- panel: welcome (the original 3x3 card grid) ---------- */
+
+.panel-welcome {
+
+    display: grid;
+    grid-template-columns: repeat(3, minmax(30vh, 1fr));
+    grid-template-rows: repeat(3, minmax(12vh, 1fr));
+    gap: clamp(1.2vh, 0.7vw, 0.7vw);
 
 }
 
@@ -557,21 +605,21 @@ html, body {
 
 /* column 1 */
 
-.trophies { 
+.panel-welcome .trophies { 
 
     grid-column: 1; 
     grid-row: 1; 
 
 }
 
-.controller { 
+.panel-welcome .controller { 
 
     grid-column: 1; 
     grid-row: 2; 
 
 }
 
-.storage {
+.panel-welcome .storage {
     
     grid-column: 1; 
     grid-row: 3; 
@@ -580,7 +628,7 @@ html, body {
 
 /* column 2 */
 
-.catalog {
+.panel-welcome .catalog {
 
     position: relative;
     grid-column: 2;
@@ -602,7 +650,7 @@ html, body {
 
 }
 
-.catalog-images:first-of-type {
+.panel-welcome .catalog-images:first-of-type {
 
     grid-column: span 2;     /* 2 + 6 = 8 cells, so the 4x2 grid fills exactly */
 
@@ -623,7 +671,7 @@ html, body {
 
 }
 
-.news { 
+.panel-welcome .news { 
 
     grid-column: 2; 
     grid-row: 3; 
@@ -632,14 +680,14 @@ html, body {
 
 /* column 3 */
 
-.wishlist {
+.panel-welcome .wishlist {
 
     grid-column: 3; 
     grid-row: 1; 
 
 }
 
-.gallery {
+.panel-welcome .gallery {
 
     grid-column: 3;
     grid-row: 2 / span 2;

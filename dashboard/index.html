@@ -262,30 +262,34 @@
             document.addEventListener("DOMContentLoaded", () => {
 
               const games = [
-                { title: "Adguard", cover: "../content/images/adguard.webp", href: "http://100.123.123.123:3001" },
-                { title: "Audiomuse", cover: "../content/images/audiomuse.png", href: "http://100.123.123.123:8004" },
-                { title: "Crafty Controller", cover: "../content/images/crafty.jpeg", href: "https://100.123.123.123:8443" },
-                { title: "Earthwalker", cover: "../content/images/earthwalker.png", href: "http://100.123.123.123:8085" },
-                { title: "Immich", cover: "../content/images/immich.png", href: "http://100.123.123.123:2283" },
-                { title: "Jellyfin", cover: "../content/images/jellyfin.png", href: "http://100.123.123.123:8096" },
-                { title: "Aula Virtual", cover: "../content/images/moodle.png", href: "https://centros.edu.xunta.gal/iesteis/aulavirtual/my/" },
-                { title: "Pinchflat", cover: "../content/images/pinchflat.png", href: "http://100.123.123.123:8945" },
-                { title: "Siyuan", cover: "../content/images/siyuan.png", href: "http://100.123.123.123:6810" },
-                { title: "Portainer", cover: "../content/images/portainer.png", href: "https://100.123.123.123:9443" },
-                { title: "Discord", cover: "../content/images/discord.png", href: "https://discord.com/channels/@me" },
-                { title: "Whatsapp", cover: "../content/images/whatsapp.png", href: "https://web.whatsapp.com" },
-                { title: "Synapse Admin", cover: "../content/images/matrix.png", href: "http://100.123.123.123:8345" }
+                { title: "Welcome",           cover: "../content/images/welcome.png",     href: "#",                                                     panel: "welcome" },
+                { title: "Adguard",           cover: "../content/images/adguard.webp",    href: "http://100.123.123.123:3001" },                             
+                { title: "Audiomuse",         cover: "../content/images/audiomuse.png",   href: "http://100.123.123.123:8004" },
+                { title: "Crafty Controller", cover: "../content/images/crafty.jpeg",     href: "https://100.123.123.123:8443" },                   
+                { title: "Earthwalker",       cover: "../content/images/earthwalker.png", href: "http://100.123.123.123:8085" },
+                { title: "Immich",            cover: "../content/images/immich.png",      href: "http://100.123.123.123:2283" },                              
+                { title: "Jellyfin",          cover: "../content/images/jellyfin.png",    href: "http://100.123.123.123:8096" },
+                { title: "Aula Virtual",      cover: "../content/images/moodle.png",      href: "https://centros.edu.xunta.gal/iesteis/aulavirtual" },
+                { title: "Pinchflat",         cover: "../content/images/pinchflat.png",   href: "http://100.123.123.123:8945" },
+                { title: "Siyuan",            cover: "../content/images/siyuan.png",      href: "http://100.123.123.123:6810" },
+                { title: "Portainer",         cover: "../content/images/portainer.png",   href: "https://100.123.123.123:9443" },
+                { title: "Discord",           cover: "../content/images/discord.png",     href: "https://discord.com/channels/@me" },
+                { title: "Whatsapp",          cover: "../content/images/whatsapp.png",    href: "https://web.whatsapp.com" },
+                { title: "Synapse Admin",     cover: "../content/images/matrix.png",      href: "http://100.123.123.123:8345" }
               ];
 
               const track       = document.getElementById("track");
               const carouselEl  = document.querySelector(".carousel");
               const topBarEl    = document.querySelector(".top-bar");
-              const bottomBarEl = document.querySelector(".bottom-bar");
+              const panelEls    = Object.fromEntries(
+                [...document.querySelectorAll(".bar-panel")].map(p => [p.dataset.panel, p])
+              );
+              const welcomePanel = panelEls.welcome;
               const tabEls      = [...document.querySelectorAll(".tabs p")];
               const toolEls     = [...document.querySelectorAll(".tools img")];
               const toolsBox    = document.querySelector(".tools");
               const timeEl      = document.getElementById("time");
-              const cardEls     = [...document.querySelectorAll(".bottom-bar .card")];
+              const cardEls     = [...welcomePanel.querySelectorAll(".card")];   // cards of the welcome panel
 
               let current       = 0;
               let zone          = "games";   // "games" = carousel, "bar" = top bar, "cards" = bottom bar
@@ -321,7 +325,14 @@
                 current = Math.max(0, Math.min(games.length - 1, index));
                 track.style.setProperty("--i", current);
                 tiles.forEach((t, i) => t.classList.toggle("active", i === current));
+
+                // if the new game has no cards, make sure focus isn't stuck inside them
+                if (zone === "cards" && games[current].panel !== "welcome") zone = "games";
+                render();
               }
+
+              // which panel (if any) the selected game wants in the bottom bar
+              const currentPanel = () => games[current].panel;
 
               /* ---------- top bar ---------- */
 
@@ -381,34 +392,34 @@
               /* ---------- bottom bar scroll modes ---------- */
 
               function updateBarMode() {
-                const overflowing = bottomBarEl.scrollWidth > bottomBarEl.clientWidth + 1;
+                const overflowing = welcomePanel.scrollWidth > welcomePanel.clientWidth + 1;
                 const col2 = cardEls[1];                                  // news = column 2
                 const col2Right = col2.offsetLeft + col2.offsetWidth;
-                const col2Hidden = col2Right > bottomBarEl.clientWidth;
+                const col2Hidden = col2Right > welcomePanel.clientWidth;
 
                 // only column 3 off screen -> free scroll; column 2 off screen -> snap carousel
-                bottomBarEl.classList.toggle("snap", overflowing && col2Hidden);
+                welcomePanel.classList.toggle("snap", overflowing && col2Hidden);
               }
 
               function scrollToCard(card) {
-                const pad    = parseFloat(getComputedStyle(bottomBarEl).paddingLeft);
+                const pad    = parseFloat(getComputedStyle(welcomePanel).paddingLeft);
                 const left   = card.offsetLeft;
                 const right  = left + card.offsetWidth;
-                const view   = bottomBarEl.clientWidth;
-                const scroll = bottomBarEl.scrollLeft;
+                const view   = welcomePanel.clientWidth;
+                const scroll = welcomePanel.scrollLeft;
 
                 let target = scroll;
-                if (bottomBarEl.classList.contains("snap")) {
+                if (welcomePanel.classList.contains("snap")) {
                   target = left - pad;                    // carousel: card's column goes to the left edge
                 } else if (left - pad < scroll) {
                   target = left - pad;                    // free scroll: only move if out of view
                 } else if (right + pad > scroll + view) {
                   target = right + pad - view;
                 }
-                bottomBarEl.scrollTo({ left: target, behavior: "smooth" });
+                welcomePanel.scrollTo({ left: target, behavior: "smooth" });
               }
 
-              new ResizeObserver(updateBarMode).observe(bottomBarEl);
+              new ResizeObserver(updateBarMode).observe(welcomePanel);
               updateBarMode();
 
               /* ---------- render ---------- */
@@ -464,7 +475,11 @@
 
                 carouselEl.classList.toggle("unfocused", zone === "bar");
                 carouselEl.classList.toggle("cards-active", zone === "cards");
-                bottomBarEl.classList.toggle("unfocused", zone === "bar");
+                Object.entries(panelEls).forEach(([name, el]) => {
+                  const shown = name === currentPanel();
+                  el.classList.toggle("visible", shown);
+                  el.classList.toggle("unfocused", shown && zone === "bar");
+                });
                 topBarEl.classList.toggle("focused", zone === "bar");
                 syncSlideshows();   // <-- add this
               }
@@ -508,6 +523,7 @@
                 }
                 if (e.key === "ArrowDown") {
                   e.preventDefault();
+                  if (currentPanel() !== "welcome") return;   // nothing below this game
                   zone = "cards";
                   cardIndex = 0;
                   render();
@@ -564,6 +580,8 @@
       </main>
 
       <footer class="bottom-bar">
+
+        <section class="bar-panel panel-welcome" data-panel="welcome">
 
         <div class="card trophies">
 
@@ -630,6 +648,8 @@
           <img class="catalog-images" src="https://shared.fastly.steamstatic.com/store_item_assets//steam/apps/1671210/7ccda5b1631d2e60cc756a3271e845dbb9168821/header.jpg?t=1782314340" alt="">
       
         </div>
+
+        </section>
 
       </footer>
 
