@@ -1,253 +1,64 @@
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
 
   <head>
 
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>RoelXD</title>
+
     <link rel="icon" type="image/x-icon" href="../favicon.ico">
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=3">
+    <script src="app.js?v=3" defer></script>
 
   </head>
 
   <body>
 
-    <img class="bg" src="../content/images/background.jpeg">
+    <!-- two background layers so they can crossfade when the selected game changes -->
+
+    <img class="bg show" src="../content/images/backgrounds/background.jpeg" alt="">
+    <img class="bg" alt="">
+    <div class="tint"></div>
 
     <audio id="bgm" loop></audio>
 
-    <script>
+    <!-- boot screen: also unlocks audio with the first gesture -->
 
-      const bgm = document.getElementById("bgm");
-      bgm.volume = 0.4;
+    <div class="boot" id="boot">
 
-      const unlockEvents = ["pointerdown", "keydown", "touchend"];
+      <p class="boot-logo">RoelXD</p>
 
-      function startMusic() {
-        bgm.play()
-          .then(() => unlockEvents.forEach(t => document.removeEventListener(t, startMusic)))
-          .catch(() => {});   // blocked: try again on the next gesture
-      }
-
-      startMusic();   // works if the browser allows autoplay
-      unlockEvents.forEach(t => document.addEventListener(t, startMusic));
-
-    </script>
-
+    </div>
 
     <div class="ps5-dashboard">
 
       <header class="top-bar">
 
-      <div class="tabs">
+        <div class="tabs">
 
-        <p class="active" data-text="Games">Games</p>
-        <p data-text="Media" data-href="https://youtube.com/playlist?list=PLZ6G6as_54lQdsHnuKI7psuhZyIecs24i&si=VuTDi998JHaJ6sgB">Media</p>
+          <p class="active" data-text="Games">Games</p>
+          <p data-text="Media">Media</p>
 
-      </div>
+        </div>
 
-      <div class="hour">
+        <div class="hour">
 
-        <p id="time"></p>
+          <p id="time"></p>
 
-        <script>
+        </div>
 
-          const clockEl = document.getElementById("time");
+        <div class="tools">
 
-          const digits = str =>
-            str.replace(/\d/g, d => `<span class="digit">${d}</span>`);
+          <img id="soundBtn" src="../content/images/items/mute.svg" alt="Sound off" title="Music (M)">
 
-          function updateClock() {
-            const d = new Date();
+          <img id="searchBtn" src="../content/images/items/search.svg" alt="Search" title="Search (F)">
 
-            let hour = d.getHours();
-            const ampm = hour >= 12 ? "PM" : "AM";
-            hour = hour % 12 || 12;
+          <img id="settingsBtn" src="../content/images/items/settings.svg" alt="Settings" title="Settings (S)">
 
-            const minutes = String(d.getMinutes()).padStart(2, "0");
-            const seconds = String(d.getSeconds()).padStart(2, "0");
-
-            clockEl.innerHTML =
-              `${digits(`${hour}:${minutes}`)}` +
-              `<span class="seconds">:${digits(seconds)}</span> ${ampm}`;
-          }
-
-          updateClock();
-          setInterval(updateClock, 1000);
-
-        </script>
-
-      </div>
-
-      <div class="tools">
-
-        <img id="soundBtn" src="../content/images/mute.svg" alt="Sound off">
-    
-        <img src="../content/images/search.svg" alt="Search">
-
-        <img id="settingsBtn" src="../content/images/settings.svg" alt="Settings">
-
-        <script>
-
-          (function () {
-            const FOLDER = "../content/audio/";
-            const FADE_MS = 4000;
-            const MAX_VOLUME = 1;
-
-            const ICON_MUTE = "../content/images/mute.svg";
-            const ICON_VOLUME = "../content/images/volume.svg";
-
-            const soundBtn = document.getElementById("soundBtn");
-
-            // Two players so one can fade out while the other fades in
-            const a = document.getElementById("bgm");
-            const b = new Audio();
-            b.loop = true;
-            const players = [a, b];
-            let active = 0;
-            let currentHour = null;
-            let started = false;   // music engine has been started
-            let muted = true;      // the page starts muted
-            let tickId = null;
-
-            function trackForHour(h) {
-              const suffix = h < 12 ? "AM" : "PM";
-              const h12 = h % 12 === 0 ? 12 : h % 12;
-              return FOLDER + encodeURIComponent(h12 + " " + suffix + ".mp3");
-            }
-
-            const clamp = v => Math.min(1, Math.max(0, v));
-
-            function fade(player, from, to, ms, onDone) {
-              cancelAnimationFrame(player._fadeId);
-              const start = performance.now();
-              player.volume = clamp(from);
-              function step(now) {
-                const t = Math.min(Math.max((now - start) / ms, 0), 1);
-                player.volume = clamp(from + (to - from) * t);
-                if (t < 1) player._fadeId = requestAnimationFrame(step);
-                else if (onDone) onDone();
-              }
-              player._fadeId = requestAnimationFrame(step);
-            }
-
-            function switchTo(hour, instant) {
-              const outgoing = players[active];
-              const incoming = players[1 - active];
-
-              incoming.src = trackForHour(hour);
-              incoming.volume = 0;
-              incoming.play().catch(err => console.warn("Playback failed:", err));
-              fade(incoming, 0, MAX_VOLUME, instant ? 1 : FADE_MS);
-
-              if (outgoing.src) {
-                fade(outgoing, outgoing.volume, 0, FADE_MS, () => outgoing.pause());
-              }
-              active = 1 - active;
-              currentHour = hour;
-            }
-
-            function tick() {
-              const hour = new Date().getHours();
-              if (hour !== currentHour) switchTo(hour, currentHour === null);
-            }
-
-            function unmute() {
-              muted = false;
-              soundBtn.src = ICON_VOLUME;
-              soundBtn.alt = "Sound on";
-
-              if (!started) {
-                started = true;
-                tick();
-                tickId = setInterval(tick, 1000);
-              } else {
-                // resume the current track and fade it back in
-                const p = players[active];
-                p.play().catch(err => console.warn("Playback failed:", err));
-                fade(p, p.volume, MAX_VOLUME, 800);
-              }
-            }
-
-            function mute() {
-              muted = true;
-              soundBtn.src = ICON_MUTE;
-              soundBtn.alt = "Sound off";
-
-              // fade everything out, then pause
-              players.forEach(p => {
-                if (p.src && !p.paused) {
-                  fade(p, p.volume, 0, 500, () => p.pause());
-                }
-              });
-            }
-
-            soundBtn.addEventListener("click", () => (muted ? unmute() : mute()));
-
-            // If the hour changes while muted, tick() would start a new track audibly.
-            // Guard against that by wrapping switchTo's behavior:
-            const originalSwitchTo = switchTo;
-            switchTo = function (hour, instant) {
-              if (muted) {
-                // just prepare the track silently for when the user unmutes
-                const incoming = players[1 - active];
-                incoming.src = trackForHour(hour);
-                incoming.volume = 0;
-                incoming.pause();
-                players[active].pause();
-                active = 1 - active;
-                currentHour = hour;
-                return;
-              }
-              originalSwitchTo(hour, instant);
-            };
-
-              document.getElementById("settingsBtn").addEventListener("click", () => {
-              window.open("https://100.123.123.123:9090", "_blank", "noopener");
-            });
-            
-          })();
-
-        </script>
-
-        <script>
-        const tools = document.querySelector(".tools");
-        const tabs  = document.querySelector(".tabs");
-
-        function tabsRightEdge() {
-          return Math.max(
-            ...[...tabs.children].map(el => {
-              const range = document.createRange();
-              range.selectNodeContents(el);
-              return range.getBoundingClientRect().right;
-            })
-          );
-        }
-
-        function checkTools() {
-          // only the icons, not the hidden <audio>
-          const toolsLeft = Math.min(
-            ...[...tools.querySelectorAll("img")].map(img => img.getBoundingClientRect().left)
-          );
-
-          const minGap = window.innerWidth * 0.03;
-
-          tools.classList.toggle("hidden", tabsRightEdge() + minGap > toolsLeft);
-        }
-
-        const ro = new ResizeObserver(checkTools);
-        ro.observe(tabs);
-        ro.observe(tools);
-        ro.observe(document.body);
-        window.addEventListener("resize", checkTools);
-
-        // re-check once images have loaded, since their size affects the layout
-        tools.querySelectorAll("img").forEach(img => img.addEventListener("load", checkTools));
-        checkTools();
-        </script>
-
-      </div>
-
+        </div>
 
       </header>
 
@@ -257,397 +68,205 @@
 
           <div class="carousel-track" id="track"></div>
 
-          <script>
-
-            document.addEventListener("DOMContentLoaded", () => {
-
-              const games = [
-                { title: "Welcome",           cover: "../content/images/welcome.png",     href: "#",                                                     panel: "welcome" },
-                { title: "Adguard",           cover: "../content/images/adguard.webp",    href: "http://100.123.123.123:3001" },                             
-                { title: "Audiomuse",         cover: "../content/images/audiomuse.png",   href: "http://100.123.123.123:8004" },
-                { title: "Crafty Controller", cover: "../content/images/crafty.jpeg",     href: "https://100.123.123.123:8443" },                   
-                { title: "Earthwalker",       cover: "../content/images/earthwalker.png", href: "http://100.123.123.123:8085" },
-                { title: "Immich",            cover: "../content/images/immich.png",      href: "http://100.123.123.123:2283" },                              
-                { title: "Jellyfin",          cover: "../content/images/jellyfin.png",    href: "http://100.123.123.123:8096" },
-                { title: "Aula Virtual",      cover: "../content/images/moodle.png",      href: "https://centros.edu.xunta.gal/iesteis/aulavirtual" },
-                { title: "Pinchflat",         cover: "../content/images/pinchflat.png",   href: "http://100.123.123.123:8945" },
-                { title: "Siyuan",            cover: "../content/images/siyuan.png",      href: "http://100.123.123.123:6810" },
-                { title: "Portainer",         cover: "../content/images/portainer.png",   href: "https://100.123.123.123:9443" },
-                { title: "Discord",           cover: "../content/images/discord.png",     href: "https://discord.com/channels/@me" },
-                { title: "Whatsapp",          cover: "../content/images/whatsapp.png",    href: "https://web.whatsapp.com" },
-                { title: "Synapse Admin",     cover: "../content/images/matrix.png",      href: "http://100.123.123.123:8345" }
-              ];
-
-              const track       = document.getElementById("track");
-              const carouselEl  = document.querySelector(".carousel");
-              const topBarEl    = document.querySelector(".top-bar");
-              const panelEls    = Object.fromEntries(
-                [...document.querySelectorAll(".bar-panel")].map(p => [p.dataset.panel, p])
-              );
-              const welcomePanel = panelEls.welcome;
-              const tabEls      = [...document.querySelectorAll(".tabs p")];
-              const toolEls     = [...document.querySelectorAll(".tools img")];
-              const toolsBox    = document.querySelector(".tools");
-              const timeEl      = document.getElementById("time");
-              const cardEls     = [...welcomePanel.querySelectorAll(".card")];   // cards of the welcome panel
-
-              let current       = 0;
-              let zone          = "games";   // "games" = carousel, "bar" = top bar, "cards" = bottom bar
-              let barIndex      = 1;         // selected item in the top bar
-              let cardIndex     = 0;         // selected card in the bottom bar
-
-              /* ---------- carousel ---------- */
-
-              games.forEach((game, i) => {
-                const el = document.createElement("a");
-                el.className = "game";
-
-                if (game.href && game.href !== "#") {
-                  el.href = game.href;
-                  el.target = "_blank";
-                  el.rel = "noopener noreferrer";
-                }
-
-                el.style.backgroundImage = `url("${game.cover}")`;
-                el.innerHTML = `<span class="title">${game.title}</span>`;
-                el.addEventListener("click", e => {
-                  if (i !== current) {          // first click only selects
-                    e.preventDefault();
-                    select(i);
-                  }
-                });
-                track.appendChild(el);
-              });
-
-              const tiles = [...track.children];
-
-              function select(index) {
-                current = Math.max(0, Math.min(games.length - 1, index));
-                track.style.setProperty("--i", current);
-                tiles.forEach((t, i) => t.classList.toggle("active", i === current));
-
-                // if the new game has no cards, make sure focus isn't stuck inside them
-                if (zone === "cards" && games[current].panel !== "welcome") zone = "games";
-                render();
-              }
-
-              // which panel (if any) the selected game wants in the bottom bar
-              const currentPanel = () => games[current].panel;
-
-              /* ---------- top bar ---------- */
-
-              // order: Games, Media, search, settings, clock
-              // the tools are skipped when the overlap check has hidden them
-              function barItems() {
-                const base = toolsBox.classList.contains("hidden") ? tabEls : [...tabEls, ...toolEls];
-                return [...base, clockEl];
-              }
-
-              // tab links (Enter calls .click(), so this covers mouse and keyboard)
-              tabEls.forEach(tab => {
-                tab.addEventListener("click", () => {
-                  const url = tab.dataset.href;
-                  if (url) window.open(url, "_blank", "noopener");
-                });
-              });
-
-              /* ---------- bottom bar cards ---------- */
-
-              // HTML order: 0 trophies, 1 news, 2 wishlist, 3 controller, 4 gallery, 5 storage, 6 catalog
-              const cardNav = {
-                0: { right: 6, down: 3 },
-                1: { up: 6, left: 5, right: 4 },
-                2: { left: 6, down: 4 },
-                3: { up: 0, right: 6, down: 5 },
-                4: { up: 2, left: 1 },
-                5: { up: 3, right: 1 },
-                6: { up: undefined, left: 0, right: 2, down: 1 }
-              };
-
-              // hover selects (no scrolling here, so cards don't slide under the mouse)
-              cardEls.forEach((card, i) => {
-                card.addEventListener("mouseenter", () => {
-                  zone = "cards";
-                  cardIndex = i;
-                  render();
-                });
-              });
-
-              // hovering anywhere on the carousel makes it the active zone
-              carouselEl.addEventListener("mousemove", () => {
-                if (zone !== "games") {
-                  zone = "games";
-                  render();
-                }
-              });
-
-              // card links (Enter calls .click(), so this covers mouse, touch and keyboard)
-              cardEls.forEach(card => {
-                card.addEventListener("click", () => {
-                  const url = card.dataset.href;
-                  if (url) window.open(url, "_blank", "noopener");
-                });
-              });
-
-              /* ---------- bottom bar scroll modes ---------- */
-
-              function updateBarMode() {
-                const overflowing = welcomePanel.scrollWidth > welcomePanel.clientWidth + 1;
-                const col2 = cardEls[1];                                  // news = column 2
-                const col2Right = col2.offsetLeft + col2.offsetWidth;
-                const col2Hidden = col2Right > welcomePanel.clientWidth;
-
-                // only column 3 off screen -> free scroll; column 2 off screen -> snap carousel
-                welcomePanel.classList.toggle("snap", overflowing && col2Hidden);
-              }
-
-              function scrollToCard(card) {
-                const pad    = parseFloat(getComputedStyle(welcomePanel).paddingLeft);
-                const left   = card.offsetLeft;
-                const right  = left + card.offsetWidth;
-                const view   = welcomePanel.clientWidth;
-                const scroll = welcomePanel.scrollLeft;
-
-                let target = scroll;
-                if (welcomePanel.classList.contains("snap")) {
-                  target = left - pad;                    // carousel: card's column goes to the left edge
-                } else if (left - pad < scroll) {
-                  target = left - pad;                    // free scroll: only move if out of view
-                } else if (right + pad > scroll + view) {
-                  target = right + pad - view;
-                }
-                welcomePanel.scrollTo({ left: target, behavior: "smooth" });
-              }
-
-              new ResizeObserver(updateBarMode).observe(welcomePanel);
-              updateBarMode();
-
-              /* ---------- render ---------- */
-
-              /* ---------- card slideshows ---------- */
-
-              const SLIDE_MS = 2000;
-
-              const slideshows = cardEls
-                .map(card => ({
-                  card,
-                  slides: [...card.querySelectorAll(".catalog-images, .gallery-images")],
-                  index: 0,
-                  timer: null
-                }))
-                .filter(s => s.slides.length > 1);
-
-              function showSlide(s, i) {
-                s.index = i;
-                s.slides.forEach((img, n) => img.classList.toggle("current", n === i));
-              }
-
-              function syncSlideshows() {
-                slideshows.forEach(s => {
-                  const shouldRun = zone === "cards" && s.card.classList.contains("active");
-
-                  if (shouldRun && !s.timer) {
-                    s.timer = setInterval(
-                      () => showSlide(s, (s.index + 1) % s.slides.length),
-                      SLIDE_MS
-                    );
-                  } else if (!shouldRun && s.timer) {
-                    clearInterval(s.timer);
-                    s.timer = null;
-                    showSlide(s, 0);            // back to the first image when deselected
-                  }
-                });
-              }
-
-              function render() {
-                [...tabEls, ...toolEls, clockEl].forEach(el => el.classList.remove("active"));
-                cardEls.forEach(c => c.classList.remove("active"));
-
-                if (zone === "bar") {
-                  const items = barItems();
-                  barIndex = Math.min(barIndex, items.length - 1);
-                  items[barIndex].classList.add("active");
-                } else {
-                  tabEls[0].classList.add("active");
-                }
-
-                if (zone === "cards") cardEls[cardIndex].classList.add("active");
-
-                carouselEl.classList.toggle("unfocused", zone === "bar");
-                carouselEl.classList.toggle("cards-active", zone === "cards");
-                Object.entries(panelEls).forEach(([name, el]) => {
-                  const shown = name === currentPanel();
-                  el.classList.toggle("visible", shown);
-                  el.classList.toggle("unfocused", shown && zone === "bar");
-                });
-                topBarEl.classList.toggle("focused", zone === "bar");
-                syncSlideshows();   // <-- add this
-              }
-
-              /* ---------- keyboard ---------- */
-
-              document.addEventListener("keydown", e => {
-
-                if (zone === "bar") {
-                  const items = barItems();
-                  if (e.key === "ArrowRight") barIndex = Math.min(items.length - 1, barIndex + 1);
-                  if (e.key === "ArrowLeft")  barIndex = Math.max(0, barIndex - 1);
-                  if (e.key === "Enter")      items[barIndex].click();
-                  if (e.key === "ArrowDown")  { e.preventDefault(); zone = "games"; }
-                  render();
-                  return;
-                }
-
-                if (zone === "cards") {
-                  if (e.key.startsWith("Arrow")) e.preventDefault();
-                  const dir = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right" }[e.key];
-
-                  if (dir) {
-                    const target = cardNav[cardIndex][dir];
-                    if (target !== undefined) cardIndex = target;
-                    else if (dir === "up") zone = "games";     // top row goes back to the carousel
-                  }
-                  if (e.key === "Enter") cardEls[cardIndex].click();
-                  render();
-                  if (zone === "cards") scrollToCard(cardEls[cardIndex]);
-                  return;
-                }
-
-                // zone === "games"
-                if (e.key === "ArrowUp") {
-                  e.preventDefault();
-                  zone = "bar";
-                  barIndex = 1;          // start on Media
-                  render();
-                  return;
-                }
-                if (e.key === "ArrowDown") {
-                  e.preventDefault();
-                  if (currentPanel() !== "welcome") return;   // nothing below this game
-                  zone = "cards";
-                  cardIndex = 0;
-                  render();
-                  scrollToCard(cardEls[0]);
-                  return;
-                }
-                if (e.key === "ArrowRight") select(current + 1);
-                if (e.key === "ArrowLeft")  select(current - 1);
-                if (e.key === "Enter")      tiles[current].click();
-              });
-
-              /* ---------- mouse wheel / trackpad ---------- */
-
-              let wheelLock = false;
-              document.addEventListener("wheel", e => {
-                if (zone !== "games" || wheelLock) return;
-                const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-                if (Math.abs(delta) < 10) return;
-                select(current + (delta > 0 ? 1 : -1));
-                wheelLock = true;
-                setTimeout(() => (wheelLock = false), 200);
-              }, { passive: true });
-
-              /* ---------- touch swipe ---------- */
-
-              let startX = 0, startY = 0;
-
-              carouselEl.addEventListener("touchstart", e => {
-                startX = e.touches[0].clientX;
-                startY = e.touches[0].clientY;
-              }, { passive: true });
-
-              carouselEl.addEventListener("touchend", e => {
-                const dx = e.changedTouches[0].clientX - startX;
-                const dy = e.changedTouches[0].clientY - startY;
-
-                // only count mostly-horizontal swipes
-                if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
-                  select(current + (dx < 0 ? 1 : -1));   // swipe left = next game
-                }
-              });
-
-              /* ---------- init ---------- */
-
-              select(0);
-              render();
-
-            });
-
-          </script>
-
         </div>
-      
+
       </main>
 
       <footer class="bottom-bar">
 
+        <!-- ---------- panel: welcome ---------- -->
+
+        <!-- cards are in column order (top to bottom, left to right), which is also the order they stack in on narrow screens -->
+
         <section class="bar-panel panel-welcome" data-panel="welcome">
 
-        <div class="card trophies">
+          <div class="card trophies" data-action="trophies">
 
-          <p class="bottom-titles" >Trophies</p>
+            <p class="bottom-titles">Trophies</p>
 
-        </div>
+            <div class="card-body">
 
-        <div class="card news">
+              <p class="big"><span id="trophyCount">0</span><small> / <span id="trophyTotal">0</span></small></p>
 
-          <p class="bottom-titles" >News</p>
+              <div class="bar"><div class="bar-fill" id="trophyBar"></div></div>
 
-        </div>
+              <p class="muted" id="trophyLast">No trophies yet</p>
 
-        <div class="card wishlist">
+            </div>
 
-          <p class="bottom-titles" >Wishlist</p>
+          </div>
 
-        </div>
+          <div class="card controller" data-action="help">
 
-        <div class="card controller">
+            <p class="bottom-titles">Controller</p>
 
-          <p class="bottom-titles" >Controller</p>
+            <div class="card-body row-body">
 
-        </div>
+              <img class="pad-icon" src="../content/images/items/controller.png" alt="">
 
-        <div class="card gallery">
+              <div>
 
-          <p class="bottom-titles" >Gallery</p>
+                <p id="padName">No controller</p>
 
-          <img class="gallery-images current" src="https://scontent-mad1-1.cdninstagram.com/v/t51.82787-15/830900225_18119127541991797_1450295730928335302_n.jpg?stp=dst-jpegr_e35_tt6&_nc_cat=107&ig_cache_key=Mzk5OTAxMTg0NzcwNzU4ODUxOA%3D%3D.3-ccb7-5&ccb=7-5&_nc_sid=58cdad&efg=eyJ2ZW5jb2RlX3RhZyI6IkNBUk9VU0VMX0lURU0ueHBpZHMuMTQ0MC5oZHIucmVndWxhcl9waG90by5DMyJ9&_nc_ohc=hncCqhmeKNYQ7kNvwH4XG1z&_nc_oc=AdqDbqHk3A0yljIlFMVifOcf1G9UeIlZloQg5yXJM3xJqXIPvC5zkp1pXVlSeCrVhBE&_nc_zt=23&se=-1&_nc_ht=scontent-mad1-1.cdninstagram.com&_nc_gid=TA4IapkE_XbRiYdEH_bLmg&_nc_ss=7b689&oh=00_AQPBDibjXvcoM72UWj1VIwAo0WOGFebNDcbJJS7MhNMoww&oe=6AD6C25E" alt="">
+                <p class="muted" id="padHint">Connect one and press a button</p>
 
-          <img class="gallery-images" src="https://scontent-mad1-1.cdninstagram.com/v/t51.82787-15/645938666_18097136668991797_2743045281641035003_n.jpg?stp=dst-jpg_e35_s640x640_tt6&_nc_cat=105&ccb=7-5&_nc_sid=18de74&efg=eyJlZmdfdGFnIjoiQ0FST1VTRUxfSVRFTS5iZXN0X2ltYWdlX3VybGdlbi5DMyJ9&_nc_ohc=HlRsiYJwg5EQ7kNvwE5n72F&_nc_oc=Adpb1fo9qJ8mBron24BKLkAxYz-xJJ96yvjM_JjFzcYYbdxgzRjXsgpgkdLU8yj9Mcs&_nc_zt=23&_nc_ht=scontent-mad1-1.cdninstagram.com&_nc_gid=IXdDNz_71qmJb_e_FDnnjQ&_nc_ss=7b689&oh=00_AQMCBddUH5kd2EUTSwAG6u0WckKQN25CEi0glYgzjKzqVQ&oe=6AD6C452" alt="">
+              </div>
+            </div>
 
-          <img class="gallery-images" src="https://scontent-mad2-1.cdninstagram.com/v/t51.82787-15/553487866_18081285061991797_4833935300396343778_n.heic?stp=dst-jpg_e35_s640x640_tt6&_nc_cat=108&ccb=7-5&_nc_sid=18de74&efg=eyJlZmdfdGFnIjoiQ0FST1VTRUxfSVRFTS5iZXN0X2ltYWdlX3VybGdlbi5DMyJ9&_nc_ohc=NTm-OvcCKH8Q7kNvwFzLXPB&_nc_oc=AdpzAORTlKl0UsMS_1mlF7E-QxnGLNXM6S0k8dGWV0OAUyS5FqQ0qBaqPwaa8xnMPXg&_nc_zt=23&_nc_ht=scontent-mad2-1.cdninstagram.com&_nc_gid=i4xDo6tNwa6QAEONsyF6RA&_nc_ss=7b689&oh=00_AQOIzLtxzQTzs9e-JP8bpf5MO5RZswle3IeHMMp1Uq4ENA&oe=6AD71AA3" alt="">
+          </div>
 
-          <img class="gallery-images" src="https://scontent-mad1-1.cdninstagram.com/v/t51.82787-15/722224161_18107484268991797_7471453336857283447_n.jpg?stp=dst-jpg_e35_s640x640_tt6&_nc_cat=101&ccb=7-5&_nc_sid=18de74&efg=eyJlZmdfdGFnIjoiQ0FST1VTRUxfSVRFTS5iZXN0X2ltYWdlX3VybGdlbi5DMyJ9&_nc_ohc=6jtUJDda4z0Q7kNvwGFUIkv&_nc_oc=AdpVLtH2zXx5yKdJZqvFfqGHOq3iliUxkxhaRcaE-Hfj89aA1MCBvUPtU2vj70rtvIo&_nc_zt=23&_nc_ht=scontent-mad1-1.cdninstagram.com&_nc_gid=i4xDo6tNwa6QAEONsyF6RA&_nc_ss=7b689&oh=00_AQPG0X4VmN_ScT7NKQ07lXO0JDK8EvhY9qJtt6ABOvejHQ&oe=6AD717C8" alt="">
+          <div class="card storage" data-action="settings">
 
-          <img class="gallery-images" src="https://scontent-mad2-1.cdninstagram.com/v/t51.82787-15/799239140_18116602834991797_4111939933279852450_n.jpg?stp=dst-jpg_e35_s640x640_tt6&_nc_cat=109&ccb=7-5&_nc_sid=18de74&efg=eyJlZmdfdGFnIjoiQ0FST1VTRUxfSVRFTS5iZXN0X2ltYWdlX3VybGdlbi5DMyJ9&_nc_ohc=DUn1H3nQyDAQ7kNvwGNez7H&_nc_oc=Adp_utP2LLCX6XXuMWnjB99Ir2VEVPhB-DFlhLhow5KfpUs5ifSPcmoM2DBgRsqdEoQ&_nc_zt=23&_nc_ht=scontent-mad2-1.cdninstagram.com&_nc_gid=i4xDo6tNwa6QAEONsyF6RA&_nc_ss=7b689&oh=00_AQNbnkONknMS_rPNTmR3vou2KCOhcF5AcEkOgUp9EZzodg&oe=6AD6EA19" alt="">
-          
-        </div>
+            <p class="bottom-titles">Storage</p>
 
-        <div class="card storage">
+            <div class="card-body">
 
-          <p class="bottom-titles" >Storage</p>
+              <div class="bar">
 
-        </div>
+                <div class="bar-fill" id="storageBar"></div>
 
-        <div class="card catalog" data-href="https://steamcommunity.com/id/roelxd/">
+              </div>
 
-          <p class="bottom-titles">Game Catalog</p>
+              <p class="muted" id="storageText">Measuring…</p>
+              <p class="muted" id="deviceText"></p>
 
-          <img class="catalog-images current" class="images" src="https://shared.fastly.steamstatic.com/store_item_assets//steam/apps/438100/header.jpg?t=1762366454" alt="">
+            </div>
 
-          <img class="catalog-images" src="https://shared.fastly.steamstatic.com/store_item_assets//steam/apps/3404260/ae0f4b71735adf4f2494ecb7914fcbafee215277/header.jpg?t=1790698491" alt="">
+          </div>
 
-          <img class="catalog-images" src="https://shared.fastly.steamstatic.com/store_item_assets//steam/apps/433340/header.jpg?t=1758651509" alt="">
+          <div class="card catalog" data-href="https://steamcommunity.com/id/roelxd/">
 
-          <img class="catalog-images" src="https://shared.fastly.steamstatic.com/store_item_assets//steam/apps/4704690/163e2a742e5fb8e1f5d1e3a890da98f04ab809d4/header.jpg?t=1789464996" alt="">
-            
-          <img class="catalog-images" src="https://shared.fastly.steamstatic.com/store_item_assets//steam/apps/413150/header.jpg?t=1786554168" alt="">
-            
-          <img class="catalog-images" src="https://shared.fastly.steamstatic.com/store_item_assets//steam/apps/3527290/31bac6b2eccf09b368f5e95ce510bae2baf3cfcd/header.jpg?t=1790591892" alt="">
-            
-          <img class="catalog-images" src="https://shared.fastly.steamstatic.com/store_item_assets//steam/apps/1671210/7ccda5b1631d2e60cc756a3271e845dbb9168821/header.jpg?t=1782314340" alt="">
-      
-        </div>
+            <p class="bottom-titles">Game Catalog</p>
+
+            <img class="catalog-images" src="https://shared.fastly.steamstatic.com/store_item_assets//steam/apps/438100/header.jpg?t=1762366454" alt="">
+
+            <img class="catalog-images" src="https://shared.fastly.steamstatic.com/store_item_assets//steam/apps/3404260/ae0f4b71735adf4f2494ecb7914fcbafee215277/header.jpg?t=1790698491" alt="">
+
+            <img class="catalog-images" src="https://shared.fastly.steamstatic.com/store_item_assets//steam/apps/433340/header.jpg?t=1758651509" alt="">
+
+            <img class="catalog-images" src="https://shared.fastly.steamstatic.com/store_item_assets//steam/apps/4704690/163e2a742e5fb8e1f5d1e3a890da98f04ab809d4/header.jpg?t=1789464996" alt="">
+
+            <img class="catalog-images current" src="https://shared.fastly.steamstatic.com/store_item_assets//steam/apps/413150/header.jpg?t=1786554168" alt="">
+
+            <img class="catalog-images" src="https://shared.fastly.steamstatic.com/store_item_assets//steam/apps/3527290/31bac6b2eccf09b368f5e95ce510bae2baf3cfcd/header.jpg?t=1790591892" alt="">
+
+            <img class="catalog-images" src="https://shared.fastly.steamstatic.com/store_item_assets//steam/apps/1671210/7ccda5b1631d2e60cc756a3271e845dbb9168821/header.jpg?t=1782314340" alt="">
+
+          </div>
+
+          <div class="card news" data-href="https://www.meteogalicia.gal">
+
+            <p class="bottom-titles">News</p>
+
+            <div class="card-body row-body">
+
+              <p class="weather-icon" id="weatherIcon">·</p>
+
+              <div>
+
+                <p class="big" id="weatherTemp">--°</p>
+
+                <p class="muted" id="weatherText">Loading weather…</p>
+
+              </div>
+
+              <p class="muted greeting" id="greeting"></p>
+
+            </div>
+
+          </div>
+
+          <div class="card wishlist" data-action="wishlist">
+
+            <p class="bottom-titles">Wishlist</p>
+
+            <div class="card-body">
+
+              <ul class="wish-preview" id="wishPreview"></ul>
+
+            </div>
+
+          </div>
+
+          <div class="card gallery">
+
+            <p class="bottom-titles">Gallery</p>
+
+            <p class="muted gallery-empty">No pictures right now</p>
+
+            <img class="gallery-images current" src="https://scontent-mad1-1.cdninstagram.com/v/t51.82787-15/830900225_18119127541991797_1450295730928335302_n.jpg?stp=dst-jpegr_e35_tt6&_nc_cat=107&ig_cache_key=Mzk5OTAxMTg0NzcwNzU4ODUxOA%3D%3D.3-ccb7-5&ccb=7-5&_nc_sid=58cdad&efg=eyJ2ZW5jb2RlX3RhZyI6IkNBUk9VU0VMX0lURU0ueHBpZHMuMTQ0MC5oZHIucmVndWxhcl9waG90by5DMyJ9&_nc_ohc=hncCqhmeKNYQ7kNvwH4XG1z&_nc_oc=AdqDbqHk3A0yljIlFMVifOcf1G9UeIlZloQg5yXJM3xJqXIPvC5zkp1pXVlSeCrVhBE&_nc_zt=23&se=-1&_nc_ht=scontent-mad1-1.cdninstagram.com&_nc_gid=TA4IapkE_XbRiYdEH_bLmg&_nc_ss=7b689&oh=00_AQPBDibjXvcoM72UWj1VIwAo0WOGFebNDcbJJS7MhNMoww&oe=6AD6C25E" alt="">
+
+            <img class="gallery-images" src="https://scontent-mad1-1.cdninstagram.com/v/t51.82787-15/645938666_18097136668991797_2743045281641035003_n.jpg?stp=dst-jpg_e35_s640x640_tt6&_nc_cat=105&ccb=7-5&_nc_sid=18de74&efg=eyJlZmdfdGFnIjoiQ0FST1VTRUxfSVRFTS5iZXN0X2ltYWdlX3VybGdlbi5DMyJ9&_nc_ohc=HlRsiYJwg5EQ7kNvwE5n72F&_nc_oc=Adpb1fo9qJ8mBron24BKLkAxYz-xJJ96yvjM_JjFzcYYbdxgzRjXsgpgkdLU8yj9Mcs&_nc_zt=23&_nc_ht=scontent-mad1-1.cdninstagram.com&_nc_gid=IXdDNz_71qmJb_e_FDnnjQ&_nc_ss=7b689&oh=00_AQMCBddUH5kd2EUTSwAG6u0WckKQN25CEi0glYgzjKzqVQ&oe=6AD6C452" alt="">
+
+            <img class="gallery-images" src="https://scontent-mad2-1.cdninstagram.com/v/t51.82787-15/553487866_18081285061991797_4833935300396343778_n.heic?stp=dst-jpg_e35_s640x640_tt6&_nc_cat=108&ccb=7-5&_nc_sid=18de74&efg=eyJlZmdfdGFnIjoiQ0FST1VTRUxfSVRFTS5iZXN0X2ltYWdlX3VybGdlbi5DMyJ9&_nc_ohc=NTm-OvcCKH8Q7kNvwFzLXPB&_nc_oc=AdpzAORTlKl0UsMS_1mlF7E-QxnGLNXM6S0k8dGWV0OAUyS5FqQ0qBaqPwaa8xnMPXg&_nc_zt=23&_nc_ht=scontent-mad2-1.cdninstagram.com&_nc_gid=i4xDo6tNwa6QAEONsyF6RA&_nc_ss=7b689&oh=00_AQOIzLtxzQTzs9e-JP8bpf5MO5RZswle3IeHMMp1Uq4ENA&oe=6AD71AA3" alt="">
+
+            <img class="gallery-images" src="https://scontent-mad1-1.cdninstagram.com/v/t51.82787-15/722224161_18107484268991797_7471453336857283447_n.jpg?stp=dst-jpg_e35_s640x640_tt6&_nc_cat=101&ccb=7-5&_nc_sid=18de74&efg=eyJlZmdfdGFnIjoiQ0FST1VTRUxfSVRFTS5iZXN0X2ltYWdlX3VybGdlbi5DMyJ9&_nc_ohc=6jtUJDda4z0Q7kNvwGFUIkv&_nc_oc=AdpVLtH2zXx5yKdJZqvFfqGHOq3iliUxkxhaRcaE-Hfj89aA1MCBvUPtU2vj70rtvIo&_nc_zt=23&_nc_ht=scontent-mad1-1.cdninstagram.com&_nc_gid=i4xDo6tNwa6QAEONsyF6RA&_nc_ss=7b689&oh=00_AQPG0X4VmN_ScT7NKQ07lXO0JDK8EvhY9qJtt6ABOvejHQ&oe=6AD717C8" alt="">
+
+            <img class="gallery-images" src="https://scontent-mad2-1.cdninstagram.com/v/t51.82787-15/799239140_18116602834991797_4111939933279852450_n.jpg?stp=dst-jpg_e35_s640x640_tt6&_nc_cat=109&ccb=7-5&_nc_sid=18de74&efg=eyJlZmdfdGFnIjoiQ0FST1VTRUxfSVRFTS5iZXN0X2ltYWdlX3VybGdlbi5DMyJ9&_nc_ohc=DUn1H3nQyDAQ7kNvwGNez7H&_nc_oc=Adp_utP2LLCX6XXuMWnjB99Ir2VEVPhB-DFlhLhow5KfpUs5ifSPcmoM2DBgRsqdEoQ&_nc_zt=23&_nc_ht=scontent-mad2-1.cdninstagram.com&_nc_gid=i4xDo6tNwa6QAEONsyF6RA&_nc_ss=7b689&oh=00_AQNbnkONknMS_rPNTmR3vou2KCOhcF5AcEkOgUp9EZzodg&oe=6AD6EA19" alt="">
+
+          </div>
+
+        </section>
+
+        <!-- ---------- panel: game (every app except Welcome) ---------- -->
+
+        <section class="bar-panel panel-game" data-panel="game">
+
+          <div class="game-actions">
+
+            <a class="play-btn" id="playBtn" target="_blank" rel="noopener noreferrer">
+
+              Play
+
+            </a>
+
+            <p class="game-status" id="gameStatus"></p>
+
+          </div>
+
+          <div class="game-info">
+
+            <div class="card info-card">
+
+              <p class="bottom-titles">About</p>
+
+              <div class="card-body">
+
+                <p class="big" id="infoTitle"></p>
+
+                <p class="muted" id="infoDesc"></p>
+
+              </div>
+
+            </div>
+
+            <div class="card info-card">
+
+              <p class="bottom-titles">Your activity</p>
+
+              <div class="card-body">
+
+                <p class="big" id="infoCount"></p>
+                <p class="muted" id="infoLast"></p>
+
+              </div>
+
+            </div>
+
+            <div class="card info-card">
+
+              <p class="bottom-titles">Address</p>
+
+              <div class="card-body">
+
+                <p class="host" id="infoHost"></p>
+                <p class="muted" id="infoKind"></p>
+
+              </div>
+
+            </div>
+
+          </div>
 
         </section>
 
@@ -655,9 +274,97 @@
 
     </div>
 
+    <!-- ---------- overlays ---------- -->
+
+    <div class="modal" id="m-search">
+
+      <div class="panel">
+        <input id="searchInput" type="text" placeholder="Search apps…" autocomplete="off" spellcheck="false">
+        <ul class="list" id="searchResults"></ul>
+      </div>
+
+    </div>
+
+    <div class="modal" id="m-settings">
+
+      <div class="panel">
+
+        <h2>Settings</h2>
+
+        <ul class="list">
+
+          <li><button class="row" data-nav data-setting="sounds">   <span>UI sounds</span>                                  <span class="switch"></span></button></li>
+          <li><label  class="row" data-nav tabindex="0">            <span>Music volume</span>                               <input type="range" min="0" max="100" step="5" data-setting="volume"></label></li>
+          <li><button class="row" data-nav data-setting="clock24">  <span>24-hour clock</span>                              <span class="switch"></span></button></li>
+          <li><button class="row" data-nav data-setting="seconds">  <span>Always show seconds</span>                        <span class="switch"></span></button></li>
+          <li><button class="row" data-nav data-setting="tint">     <span>Tint the background when a game has none</span>   <span class="switch"></span></button></li>
+          <li><button class="row" data-nav data-setting="recent">   <span>Sort apps by recently used</span>                 <span class="switch"></span></button></li>
+          <li><button class="row" data-nav data-setting="boot">     <span>Show start screen</span>                          <span class="switch"></span></button></li>
+          <li><button class="row" data-nav id="cockpitBtn">         <span>Server panel (Cockpit)</span>                     <span class="arrow">›</span></button></li>
+          <li><button class="row danger" data-nav id="resetBtn">    <span>Reset stats, trophies and wishlist</span>         <span class="arrow">›</span></button></li>
+
+        </ul>
+
+      </div>
+
+    </div>
+
+    <div class="modal" id="m-trophies">
+
+      <div class="panel">
+        <h2>Trophies</h2>
+        <ul class="list" id="trophyList"></ul>
+      </div>
+
+    </div>
+
+    <div class="modal" id="m-wishlist">
+
+      <div class="panel">
+
+        <h2>Wishlist</h2>
+
+        <form class="wish-form" id="wishForm">
+
+          <input id="wishInput" type="text" placeholder="Add something you want…" autocomplete="off" data-nav>
+          <button type="submit">Add</button>
+
+        </form>
+
+        <ul class="list" id="wishList"></ul>
+
+      </div>
+
+    </div>
+
+    <div class="modal" id="m-help">
+
+      <div class="panel">
+        
+        <h2>Controls</h2>
+
+        <table class="keys">
+
+          <tr><th>Action</th>               <th>Keyboard</th>                     <th>Controller</th></tr>
+          <tr><td>Move</td>                 <td>Arrows / mouse wheel</td>         <td>D-pad / left stick</td></tr>
+          <tr><td>Open / play</td>          <td>Enter</td>                        <td>A</td></tr>
+          <tr><td>Back / close</td>         <td>Esc</td>                          <td>B</td></tr>
+          <tr><td>Search</td>               <td>/ or F</td>                       <td>Y</td></tr>
+          <tr><td>Settings</td>             <td>S</td>                            <td>Start / Options</td></tr>
+          <tr><td>Music on / off</td>       <td>M</td>                            <td>X</td></tr>
+          <tr><td>Switch tab</td>           <td>Q / E</td>                        <td>LB / RB</td></tr>
+          <tr><td>This screen</td>          <td>?</td>                            <td>Select / Share</td></tr>
+
+        </table>
+
+        <p class="muted">Psst… some classic codes still work here.</p>
+
+      </div>
+
+    </div>
+
+    <div class="toasts" id="toasts"></div>
 
   </body>
 
 </html>
-
-
