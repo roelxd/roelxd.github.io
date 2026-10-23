@@ -199,7 +199,7 @@ const music = (() => {
   const FADE_MS = 4000;
 
   const ICON_MUTE = "../content/images/items/mute.svg";
-  const ICON_VOLUME = "../content/images/backgrounds/volume.svg";
+  const ICON_VOLUME = "../content/images/items/volume.svg";
 
   const soundBtn = $("#soundBtn");
 
